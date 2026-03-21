@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B4</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        transition: 0.25s;
+      }
+      body {
+        margin: 0;
+        height: 100vh;
+        width: 100vw;
+        display: grid;
+        place-items: center;
+      }
+      .main-cont {
+        transform-style: preserve-3d;
+        perspective: 1000px;
+        display: flex;
+      }
+      .card-cont {
+        .card {
+          height: 300px;
+          margin-inline: 20px;
+          aspect-ratio: 1/1;
+          background: url("//picsum.photos/id/32/1920/1080") center/cover;
+        }
+
+        .shadow {
+          height: 300px;
+          margin-inline: 20px;
+          aspect-ratio: 1/1;
+          opacity: 0.25;
+          background: url("//picsum.photos/id/32/1920/1080") center/cover;
+          mask-image: linear-gradient(to top, white 50%, transparent 100%);
+          transform: scaleY(-1);
+        }
+
+        &:hover {
+          margin-inline: -20px;
+          scale: 1.2;
+        }
+
+        &:hover ~ .card-cont {
+          rotate: 0 1 0 -45deg;
+          margin-inline: -40px;
+        }
+      }
+      .card-cont:has(~ :hover) {
+        rotate: 0 1 0 45deg;
+        margin-inline: -40px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-cont">
+      <div class="card-cont">
+        <div class="card"></div>
+        <div class="shadow"></div>
+      </div>
+      <div class="card-cont">
+        <div class="card"></div>
+        <div class="shadow"></div>
+      </div>
+      <div class="card-cont">
+        <div class="card"></div>
+        <div class="shadow"></div>
+      </div>
+      <div class="card-cont">
+        <div class="card"></div>
+        <div class="shadow"></div>
+      </div>
+    </div>
+  </body>
+</html>

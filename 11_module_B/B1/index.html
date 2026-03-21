@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B1</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        height: 100vh;
+        width: 100vw;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        font-family: sans-serif;
+      }
+      .main-cont {
+        padding: 50px;
+        position: relative;
+        display: flex;
+        gap: 30px;
+        border: 1px solid black;
+        height: 100%;
+        width: 100%;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+
+        .last-cont {
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+        }
+        .drop-station {
+          border: 1px solid black;
+          width: 100%;
+          height: 100%;
+          display: grid;
+          place-items: center;
+
+          #input-span {
+            font-size: 2em;
+          }
+        }
+
+        canvas {
+          flex-grow: 1;
+          height: 700px;
+          width: 1200px;
+          display: none;
+          border: 1px solid black;
+        }
+        .gray-back {
+          background-color: gray;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-cont">
+      <div class="drop-station">
+        <span id="input-span">Drop files here</span>
+        <input type="file" id="image-input" hidden />
+      </div>
+      <canvas id="mycan"></canvas>
+      <div class="last-cont">
+        <div>
+          Width Crop Size
+          <input type="range" max="700" class="size-x-mod" />
+        </div>
+        <div>
+          Height Crop Size
+          <input type="range" max="700" class="size-y-mod" />
+        </div>
+        <button class="download">Download</button>
+      </div>
+    </div>
+    <script>
+      const fileInput = document.getElementById("image-input");
+      const dropZone = document.querySelector(".drop-station");
+      const inputSpan = document.querySelector("#input-span");
+      const sizeXMod = document.querySelector(".size-x-mod");
+      const sizeYMod = document.querySelector(".size-y-mod");
+      const download = document.querySelector(".download");
+      const canvas = document.querySelector("#mycan");
+      const ctx = canvas.getContext("2d");
+      const image = new Image();
+
+      dropZone.onclick = () => fileInput.click();
+
+      dropZone.ondragover = (e) => {
+        e.preventDefault();
+        dropZone.classList.add("gray-back");
+      };
+
+      dropZone.ondragleave = () => {
+        dropZone.classList.remove("gray-back");
+      };
+
+      dropZone.ondragend = () => {
+        dropZone.classList.remove("gray-back");
+      };
+
+      dropZone.ondrop = (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) {
+          fileInput.files = e.dataTransfer.files;
+          image.src = URL.createObjectURL(e.dataTransfer.files[0]);
+          inputSpan.innerText = `SELECTED: ${e.dataTransfer.files[0].name}`;
+          dropZone.style.display = "none";
+          image.onload = () => {
+            initCanvas();
+          };
+        }
+      };
+
+      const cropSize = { x: 100, y: 100 };
+      const cropLoc = { x: 0, y: 0 };
+      const mouse = { x: 0, y: 0 };
+      let isDragging = false;
+
+      canvas.onmousedown = () => {
+        isDragging = true;
+      };
+      canvas.onmouseup = () => {
+        isDragging = false;
+      };
+
+      canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+
+        // Calculate the scale factor between internal resolution and CSS display size
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        // Mouse position relative to the canvas, scaled to internal coordinates
+        mouse.x = (e.clientX - rect.left) * scaleX;
+        mouse.y = (e.clientY - rect.top) * scaleY;
+      };
+
+      const initCanvas = () => {
+        canvas.style.display = "block";
+        console.log(canvas.style.height);
+        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth;
+        animate(canvas, ctx);
+      };
+
+      let scale;
+
+      const animate = () => {
+        const cropSize = {
+          x: sizeXMod.valueAsNumber,
+          y: sizeYMod.valueAsNumber,
+        };
+        if (isDragging) {
+          cropLoc.x = mouse.x - cropSize.x / 2;
+          cropLoc.y = mouse.y - cropSize.y / 2;
+          if (cropLoc.x < 0) cropLoc.x = 0;
+          if (cropLoc.y < 0) cropLoc.y = 0;
+
+          if (cropLoc.x > canvas.width - cropSize.x)
+            cropLoc.x = canvas.width - cropSize.x;
+          if (cropLoc.y > canvas.height - cropSize.y)
+            cropLoc.y = canvas.height - cropSize.y;
+        }
+        ctx.lineWidth = 4;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        scale = Math.min(
+          canvas.width / image.width,
+          canvas.height / image.height,
+        );
+        ctx.drawImage(
+          image,
+          image.width == canvas.width
+            ? 0
+            : canvas.width / 2 - (image.width * scale) / 2,
+          image.height == canvas.height
+            ? 0
+            : canvas.height / 2 - (image.height * scale) / 2,
+          image.width * scale,
+          image.height * scale,
+        );
+        ctx.strokeStyle = "red";
+        ctx.strokeRect(cropLoc.x, cropLoc.y, cropSize.x, cropSize.y);
+        requestAnimationFrame(animate);
+      };
+
+      download.onclick = () => {
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+
+        tempCanvas.width = image.width;
+        tempCanvas.height = image.height;
+
+        const displayScale = Math.min(
+          canvas.width / image.width,
+          canvas.height / image.height,
+        );
+        const multiplier = 1 / displayScale;
+
+        const imgOffsetX = (canvas.width - image.width * displayScale) / 2;
+        const imgOffsetY = (canvas.height - image.height * displayScale) / 2;
+
+        const highResCropX = (cropLoc.x - imgOffsetX) * multiplier;
+        const highResCropY = (cropLoc.y - imgOffsetY) * multiplier;
+        const highResCropW = sizeXMod.valueAsNumber * multiplier;
+        const highResCropH = sizeYMod.valueAsNumber * multiplier;
+
+        tempCtx.fillStyle = "black";
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+        tempCtx.beginPath();
+        tempCtx.rect(highResCropX, highResCropY, highResCropW, highResCropH);
+        tempCtx.clip();
+
+        tempCtx.drawImage(image, 0, 0, image.width, image.height);
+
+        const link = document.createElement("a");
+        link.download = "high-res-crop.png";
+        link.href = tempCanvas.toDataURL("image/png");
+        link.click();
+      };
+    </script>
+  </body>
+</html>

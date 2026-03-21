@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B2</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        font-family: sans-serif;
+      }
+      canvas {
+        display: none;
+        border: 1px solid black;
+        height: 700px;
+        width: 1200px;
+      }
+      body {
+        margin: 0;
+        display: grid;
+        place-items: center;
+        height: 100vh;
+        width: 100vw;
+        padding: 20px;
+      }
+
+      .drop-zone {
+        border: 2px solid black;
+        height: 700px;
+        width: 1200px;
+        display: grid;
+        place-items: center;
+        font-size: 2em;
+      }
+
+      .main-cont {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .bg-gray {
+        background-color: gray;
+        border: 2px dotted darkgray;
+        border-radius: 30px;
+        color: white;
+      }
+      .picker-cont {
+        font-size: 2em;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+
+        .copier {
+          padding-inline: 20px;
+          padding-block: 10px;
+          border: 1px solid black;
+          border-radius: 20px;
+          font-size: 0.75em;
+        }
+
+        .picker {
+          padding-inline: 20px;
+          padding-block: 10px;
+          border: 5px solid black;
+          border-radius: 20px;
+          font-size: 0.75em;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-cont">
+      <canvas id="mycan"></canvas>
+      <div class="drop-zone">
+        <input type="file" class="input-file" hidden />
+        <span class="input-prompt">Drop files here</span>
+      </div>
+      <div class="picker-cont">
+        <div class="picker">Selected:</div>
+        <button class="copier">Copy Color</button>
+      </div>
+    </div>
+    <script type="text/javascript">
+      const canvas = document.getElementById("mycan");
+      const picker = document.querySelector(".picker");
+      const copier = document.querySelector(".copier");
+      const dropZone = document.querySelector(".drop-zone");
+      const inputPrompt = document.querySelector(".input-prompt");
+      const inputFile = document.querySelector(".input-file");
+      const ctx = canvas.getContext("2d");
+
+      const image = new Image();
+
+      dropZone.onclick = () => inputFile.click();
+      dropZone.ondragover = (e) => {
+        e.preventDefault();
+        dropZone.classList.add("bg-gray");
+      };
+      dropZone.ondragleave = () => dropZone.classList.remove("bg-gray");
+      dropZone.ondragend = () => dropZone.classList.remove("bg-gray");
+
+      dropZone.ondrop = (e) => {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length) {
+          inputFile.files = files;
+          image.src = URL.createObjectURL(files[0]);
+          dropZone.style.display = "none";
+          canvas.style.display = "block";
+
+          image.onload = () => resizeCan();
+        }
+      };
+
+      let inside = true;
+      const mouse = { x: 0, y: 0 };
+      const pixelColor = { r: 0, g: 0, b: 0 };
+      const resizeCan = () => {
+        canvas.width = 1200;
+        canvas.height = 700;
+
+        canvas.onmouseenter = () => (inside = true);
+        canvas.onmouseleave = () => (inside = false);
+        canvas.onmousemove = (e) => {
+          const rect = canvas.getBoundingClientRect();
+          mouse.x = e.x - rect.x;
+          mouse.y = e.y - rect.y;
+
+          const data = ctx.getImageData(mouse.x, mouse.y, 1, 1).data;
+
+          pixelColor.r = data[0];
+          pixelColor.g = data[1];
+          pixelColor.b = data[2];
+
+          picker.innerText = `Selected: rgb(${pixelColor.r}, ${pixelColor.g}, ${pixelColor.b})`;
+          picker.style.border = `5px solid rgb(${pixelColor.r}, ${pixelColor.g}, ${pixelColor.b})`;
+        };
+
+        animate();
+      };
+
+      copier.onclick = () => {
+        navigator.clipboard.writeText(
+          `rgb(${pixelColor.r}, ${pixelColor.g}, ${pixelColor.b})`,
+        );
+      };
+
+      canvas.onclick = () => {
+        navigator.clipboard.writeText(
+          `rgb(${pixelColor.r}, ${pixelColor.g}, ${pixelColor.b})`,
+        );
+      };
+
+      const animate = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.min(
+          canvas.width / image.width,
+          canvas.height / image.height,
+        );
+        const newImgX = image.width * scale;
+        const newImgY = image.height * scale;
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(
+          image,
+          newImgX == canvas.width ? 0 : canvas.width / 2 - newImgX / 2,
+          newImgY == canvas.height ? 0 : canvas.height / 2 - newImgY / 2,
+          newImgX,
+          newImgY,
+        );
+
+        ctx.fillStyle = `rgb(${pixelColor.r}, ${pixelColor.g}, ${pixelColor.b})`;
+        if (inside) {
+          ctx.fillRect(mouse.x + 20, mouse.y, 10, 10);
+          ctx.lineWidth = 2;
+          ctx.strokeRect(mouse.x + 20 - 2, mouse.y - 2, 12, 12);
+        }
+
+        requestAnimationFrame(animate);
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A1</title>
+    <style>
+      * {
+        transition: 0.25s;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        height: 100vh;
+        width: 100vw;
+        background-color: black;
+        margin: 0;
+      }
+      .main-cont {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: clip;
+        gap: 10px;
+        .card {
+          background-color: purple;
+          height: 150px;
+          border-radius: 10px;
+          aspect-ratio: 1/1;
+          overflow: clip;
+        }
+      }
+      .bloom {
+        position: absolute;
+        height: 200px;
+        pointer-events: none;
+        aspect-ratio: 1/1;
+        background: white;
+        mix-blend-mode: overlay;
+        border-radius: 100%;
+        filter: blur(50px);
+        transition-timing-function: linear;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-cont">
+      <div class="bloom"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+      <div class="card"></div>
+    </div>
+    <script>
+      const mainCont = document.querySelectorAll(".card");
+      const bloom = document.querySelector(".bloom");
+      const children = [...mainCont];
+      console.log(children);
+      children.forEach((ele, index) => {
+        ele.onmousemove = (e) => {
+          bloom.style.top = `${e.y - 50}px`;
+          bloom.style.left = `${e.x - 50}px`;
+          if (children[index - 1]) {
+            children[index - 1].style.height = "175px";
+          }
+
+          ele.style.height = "200px";
+
+          if (children[index + 1]) {
+            children[index + 1].style.height = "175px";
+          }
+        };
+
+        ele.onmouseleave = () => {
+          children.forEach((child) => (child.style.height = "150px"));
+        };
+      });
+    </script>
+  </body>
+</html>

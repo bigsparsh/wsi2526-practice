@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A4</title>
+    <style>
+      body {
+        background-color: gray;
+        height: 100vh;
+        width: 100vw;
+        display: grid;
+        place-items: center;
+        margin: 0;
+      }
+      .main-cont {
+        display: flex;
+        gap: 100px;
+      }
+      .ball-cont {
+        height: 500px;
+        display: grid;
+        place-items: center;
+        width: 100px;
+        position: relative;
+
+        &.d1 {
+          animation-delay: 0s;
+        }
+
+        &.d2 {
+          animation-delay: 0.25s;
+        }
+
+        &.d3 {
+          animation-delay: 0.5s;
+        }
+
+        .ball {
+          position: absolute;
+          height: 100px;
+          bottom: 0;
+          aspect-ratio: 1/1;
+          background-color: white;
+          border-radius: 100%;
+          animation: 0.5s bounce ease-out infinite alternate;
+          animation-delay: inherit;
+        }
+        .shadow {
+          position: absolute;
+          bottom: 0;
+          height: 0px;
+          border-radius: 100%;
+          background-color: white;
+          width: 0px;
+          filter: blur(0px);
+          animation: 0.5s far-shadow ease-out infinite alternate;
+          animation-delay: inherit;
+        }
+      }
+
+      @keyframes far-shadow {
+        to {
+          height: 25px;
+          width: 100px;
+          filter: blur(10px);
+        }
+      }
+      @keyframes bounce {
+        to {
+          bottom: 50%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-cont">
+      <div class="ball-cont d1">
+        <div class="ball"></div>
+        <div class="shadow"></div>
+      </div>
+
+      <div class="ball-cont d2">
+        <div class="ball"></div>
+        <div class="shadow"></div>
+      </div>
+
+      <div class="ball-cont d3">
+        <div class="ball"></div>
+        <div class="shadow"></div>
+      </div>
+    </div>
+  </body>
+</html>

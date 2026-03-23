@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model albums {
+  album_id     Int      @id @default(autoincrement())
+  publisher_id Int
+  title        String   @db.VarChar(150)
+  artist       String   @db.VarChar(50)
+  release_year Int?     @db.Year
+  genre        String?  @db.VarChar(100)
+  description  String?  @db.Text
+  created_at   DateTime @default(now()) @db.Timestamp(0)
+  updated_at   DateTime @default(now()) @db.Timestamp(0)
+  users        users    @relation(fields: [publisher_id], references: [user_id], onUpdate: Restrict, map: "albums_ibfk_1")
+  songs        songs[]
+
+  @@index([publisher_id], map: "publisher_id")
+}
+
+model labels {
+  label_id    Int           @id @default(autoincrement())
+  name        String        @db.VarChar(255)
+  song_labels song_labels[]
+}
+
+model song_labels {
+  song_label_id Int    @id @default(autoincrement())
+  song_id       Int
+  label_id      Int
+  songs         songs  @relation(fields: [song_id], references: [song_id], onUpdate: Restrict, map: "song_labels_ibfk_1")
+  labels        labels @relation(fields: [label_id], references: [label_id], onUpdate: Restrict, map: "song_labels_ibfk_2")
+
+  @@index([label_id], map: "label_id")
+  @@index([song_id], map: "song_id")
+}
+
+model songs {
+  song_id          Int              @id @default(autoincrement())
+  album_id         Int?
+  title            String           @db.VarChar(150)
+  duration_seconds Int?
+  cover_image_path String?          @db.VarChar(255)
+  is_cover         Int              @default(0)
+  lyrics           String?          @db.Text
+  track_order      Int?
+  deleted_at       DateTime?        @db.Timestamp(0)
+  created_at       DateTime         @default(now()) @db.Timestamp(0)
+  updated_at       DateTime         @default(now()) @db.Timestamp(0)
+  song_labels      song_labels[]
+  albums           albums?          @relation(fields: [album_id], references: [album_id], onDelete: Restrict, onUpdate: Restrict, map: "songs_ibfk_1")
+  user_view_logs   user_view_logs[]
+
+  @@index([album_id], map: "album_id")
+}
+
+model user_view_logs {
+  user_view_log_id Int   @id @default(autoincrement())
+  user_id          Int
+  song_id          Int
+  users            users @relation(fields: [user_id], references: [user_id], onUpdate: Restrict, map: "user_view_logs_ibfk_1")
+  songs            songs @relation(fields: [song_id], references: [song_id], onUpdate: Restrict, map: "user_view_logs_ibfk_2")
+
+  @@index([song_id], map: "song_id")
+  @@index([user_id], map: "user_id")
+}
+
+model users {
+  user_id        Int              @id @default(autoincrement())
+  username       String           @unique(map: "username") @db.VarChar(50)
+  password_hash  String           @db.VarChar(255)
+  email          String           @unique(map: "email") @db.VarChar(100)
+  role           users_role       @default(user)
+  is_banned      Boolean          @default(false)
+  token          String?          @db.VarChar(255)
+  created_at     DateTime         @default(now()) @db.Timestamp(0)
+  updated_at     DateTime         @default(now()) @db.Timestamp(0)
+  albums         albums[]
+  user_view_logs user_view_logs[]
+}
+
+enum users_role {
+  admin
+  publisher
+  user
+}

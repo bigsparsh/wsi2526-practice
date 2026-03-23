@@ -1,46 +1,130 @@
-import { Router } from "express";
+import {Router} from "express";
 import multer from "multer";
-import { prisma } from "../lib/prisma";
+import {prisma} from "../lib/prisma";
+import {z} from "zod";
+import {strToBase46} from "../lib/utils";
+
 const upload = multer();
 
 export const albumRouter = Router();
 
-const textEncoder = new TextEncoder();
+const albumDetailsGetSchema = z.string().refine(x => {
+    try {
+        Number(x);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}).transform(x => Number(x));
 
-albumRouter.get("/albums", upload.none(), async (req, res) => {
-  const { capital, year, limit, cursor } = req.params;
+const albumGetSchema = z.object({
+    cursor: z.string().refine((x) => {
+        try {
+            const cursor = JSON.parse(strToBase46(x));
+            if (!cursor.id && !z.number().safeParse(cursor.id).success)
+                throw new Error("No id provided in cursor");
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }, {
+        message: "Validation failed"
+    }).transform(x => {
+        return JSON.parse(strToBase46(x));
+    }).optional(),
+    limit: z.number().optional(),
+    year: z.string().refine(
+        (x) => {
+            const split = x.split("-");
+            if (isNaN(Number(split[0])) || isNaN(Number(split[1]))) {
+                return false;
+            }
+        }, {
+            message: "Validation failed"
+        }
+    ).transform(x => {
+        const split = x.split("-");
+        return {
+            gte: Number(split[0]),
+            lte: Number(split[1]),
+        }
+    }).optional(),
+    capital: z.string().optional(),
+});
 
-  const findAlbum = await prisma.albums.findMany({
-    where: {
-      AND: [
-        {
-          title: {
-            startsWith: capital as string,
-          },
-        },
-        {
-          release_year: {
-            lte: Number((year as string).split("-")[0]),
-            gte: Number((year as string).split("-")[1]),
-          },
-        },
-      ],
-    },
-    take: Number(limit) + 1,
-    orderBy: {
-      album_id: "desc",
-    },
-  });
-  if (findAlbum[0].album_id == 1) {
-    const prevBuffer = Buffer.from(findAlbum[0].album_id - 1);
-  }
+albumRouter.get("/", upload.none(), async (req, res) => {
+    try {
+        const verify = albumGetSchema.safeParse(req.query);
+        if (!verify) res.json({
+            success: false,
+            message: "Validation failed"
+        }).status(400);
+        const data = verify.data;
 
-  res.json({
-    success: true,
-    data: findAlbum,
-    meta: {
-      prev_cursor:
-        findAlbum[0].album_id == 1 ? null : findAlbum[0].album_id - 1,
-    },
-  });
+        try {
+            const findAlbum = await prisma.albums.findMany({
+                where: {
+                    AND: [
+                        {
+                            title: {
+                                startsWith: data?.capital,
+                            },
+                        },
+                        {
+                            release_year: data?.year,
+                        },
+                    ],
+                },
+                take: data && data.limit && data.limit - 1,
+                cursor: {
+                    album_id: data?.cursor.id,
+                },
+                orderBy: {
+                    album_id: "asc",
+                },
+            });
+
+            const next_cursor =
+                findAlbum.length == data && data.limit && data.limit + 1
+                    ? strToBase46({id: findAlbum[findAlbum.length - 1].album_id})
+                    : undefined;
+            const prev_cursor = req.query.cursor;
+
+            findAlbum.pop();
+
+            res.json({
+                success: true,
+                data: findAlbum,
+                meta: {
+                    next_cursor,
+                    prev_cursor,
+                },
+            }).status(200);
+        } catch (e) {
+            res.json({
+                success: false,
+                message: "Error during album creation."
+            }).status(400)
+        }
+
+    } catch (err) {
+        res.json({
+            success: false,
+            message: "Invalid Cursor provied",
+        }).status(400);
+    }
+});
+
+albumRouter.get("/:album_id", (req, res) => {
+    const album_id = req.params.album_id;
+    const verify = albumDetailsGetSchema.safeParse(album_id);
+    if (!verify.success) return res.json({
+        success: false,
+        message: "Validation Failed"
+    }).status(400);
+
+    console.log(typeof album_id, album_id);
+    return res.json({
+        success: true,
+    })
 });

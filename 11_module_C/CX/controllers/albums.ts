@@ -1,8 +1,12 @@
 import {Router} from "express";
 import multer from "multer";
 import {prisma} from "../lib/prisma";
+import {songs} from "../generated/prisma/client";
 import {z} from "zod";
-import {strToBase46} from "../lib/utils";
+import {generateAlbumCover, strToBase46} from "../lib/utils";
+import {authMiddleware} from "./auth";
+import * as fs from "node:fs";
+import path from "node:path";
 
 const upload = multer();
 
@@ -33,6 +37,7 @@ const albumGetSchema = z.object({
         return JSON.parse(strToBase46(x));
     }).optional(),
     limit: z.number().optional(),
+    // TODO: Add the one year range as well
     year: z.string().refine(
         (x) => {
             const split = x.split("-");
@@ -52,6 +57,7 @@ const albumGetSchema = z.object({
     capital: z.string().optional(),
 });
 
+albumRouter.use(authMiddleware);
 albumRouter.get("/", upload.none(), async (req, res) => {
     try {
         const verify = albumGetSchema.safeParse(req.query);
@@ -85,7 +91,7 @@ albumRouter.get("/", upload.none(), async (req, res) => {
             });
 
             const next_cursor =
-                findAlbum.length == data && data.limit && data.limit + 1
+                findAlbum.length == data && data?.limit && data?.limit + 1
                     ? strToBase46({id: findAlbum[findAlbum.length - 1].album_id})
                     : undefined;
             const prev_cursor = req.query.cursor;
@@ -115,7 +121,7 @@ albumRouter.get("/", upload.none(), async (req, res) => {
     }
 });
 
-albumRouter.get("/:album_id", (req, res) => {
+albumRouter.get("/:album_id", async (req, res) => {
     const album_id = req.params.album_id;
     const verify = albumDetailsGetSchema.safeParse(album_id);
     if (!verify.success) return res.json({
@@ -123,8 +129,57 @@ albumRouter.get("/:album_id", (req, res) => {
         message: "Validation Failed"
     }).status(400);
 
-    console.log(typeof album_id, album_id);
+    const albumDetails = await prisma.albums.findUnique({
+        where: {
+            album_id: verify.data,
+        },
+        include: {
+            users: {
+                select: {
+                    user_id: true,
+                    username: true,
+                    email: true,
+                }
+            }
+        }
+    })
+    // @ts-ignore
+    const {users: {user_id: id, ...userRest}, ...rest} = albumDetails;
+
     return res.json({
         success: true,
-    })
+        data: {...rest, publishers: {id, ...userRest}}
+    }).status(200);
 });
+
+albumRouter.get("/:album_id/cover", async (req, res) => {
+    const album_id = req.params.album_id;
+    const verify = albumDetailsGetSchema.safeParse(album_id);
+    if (!verify.success) return res.json({
+        success: false,
+        message: "Validation Failed"
+    }).status(400);
+
+    const songs = await prisma.songs.findMany({
+        where: {
+            album_id: verify.data,
+            is_cover: 1
+        },
+        select: {
+            cover_image_path: true
+        }
+    })
+
+
+    const inputBuffers = await Promise.all(
+        songs.map(ele =>
+            ele.cover_image_path ?
+                fs.readFileSync(path.join(__dirname, "..", "..", "uploads", ele.cover_image_path)) :
+                fs.readFileSync(path.join(__dirname, "..", "..", "uploads", "cv2.jpg")))
+    )
+    const image = await generateAlbumCover(inputBuffers);
+
+    res.set("content-type", "image/jpeg");
+    return res.send(image);
+
+})

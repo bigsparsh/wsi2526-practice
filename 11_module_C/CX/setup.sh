@@ -1,0 +1,2 @@
+xampp startapache
+xampp startmysql

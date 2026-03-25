@@ -13,6 +13,14 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     next();
 }
 
+baseRouter.post("logout", upload.none(), async (req, res) => {
+    const authToken = req.headers["x-authorization"];
+    sessionTokens.delete(authToken);
+    res.json({
+        success: true,
+    }).status(200);
+})
+
 baseRouter.post("/login", upload.none(), async (req, res) => {
     const body = req.body;
     const checkUser = await prisma.users.findUnique({
@@ -22,7 +30,6 @@ baseRouter.post("/login", upload.none(), async (req, res) => {
             password_hash: body.password,
         },
     });
-    console.log(checkUser);
     if (checkUser) {
         const accessToken = crypto
             .createHash("md5")
